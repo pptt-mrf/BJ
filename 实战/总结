@@ -1,0 +1,195 @@
+总结
+
+```
+        一个网站
+               │
+               ▼
+          它是干什么的？
+               │
+      ┌────────┴────────┐
+      ▼                 ▼
+   展示型             业务型
+                          │
+                          ▼
+                     有没有交互？
+                          │
+                          ▼
+                    有没有登录？
+                          │
+               ┌──────────┴──────────┐
+               ▼                     ▼
+            认证                    权限
+         你是谁？               你能干什么？
+               │                     │
+               └──────────┬──────────┘
+                          ▼
+                       数据
+                          │
+                谁能看/改/删/创建？
+                          │
+                          ▼
+                       API/参数
+                          │
+                          ▼
+                       技术栈
+                          │
+                          ▼
+                     HTTP响应
+                          │
+                          ▼
+                 构建攻击面地图
+                          │
+                          ▼
+                     安全验证
+```
+
+2.收集结果
+
+```
+# hisdata.jxnu.edu.cn 完整资产整合报告
+> 仅学习用途，禁止未授权渗透测试
+## 基础信息
+- 域名：hisdata.jxnu.edu.cn
+- IP：198.18.18.45
+- 业务：江西师范大学硕士研究生研招信息管理系统
+- 访问行为：根域名302重定向至 /Login.aspx
+
+## Nmap扫描结果
+|端口|状态|服务|说明|
+| ---- | ---- | ---- | ---- |
+|80/tcp|open|http|OpenResty web app server（APISIX底层）|
+|443/tcp|open|ssl/http|OpenResty web app server|
+> SSL证书：*.jxnu.edu.cn，有效期2025-12-30 ~ 2026-12-30
+
+## WhatWeb指纹信息
+- 网关：Apache APISIX
+- 后端框架：ASP.NET 4.0.30319 (.NET Framework)
+- 前端：HTML5、jQuery
+- 登录表单：密码框name=txtPassword
+- 安全头：X-Frame-Options: SAMEORIGIN（防点击劫持）
+
+## Katana爬虫结果
+爬虫命令：katana -u https://hisdata.jxnu.edu.cn -d 3 -jc -o ~/Desktop/katana_hisdata.txt
+共抓取531个端点，分为两个站点：
+1. hisdata.jxnu.edu.cn
+    - 关键路径：/Login.aspx 、/Admin/Login.aspx（管理员后台）
+    - 静态资源：easyui、jquery相关css/js
+2. sgw.jxnu.edu.cn（校园统一单点登录网关）
+    - 核心API：账号密码认证、用户信息查询、修改密码、微信扫码绑定接口
+    - 支持认证：账号密码、CAS、OAuth2、LDAP、Radius、微信、钉钉、飞书、支付宝
+    - 大量Callback回调地址，用于第三方登录跳转
+
+## 架构梳理
+用户访问 hisdata → APISIX网关 → 页面跳转sgw统一认证 → 认证成功后返回研招系统
+后端技术：.NET Framework 4.0 WebForm
+前端：jQuery + EasyUI
+
+## 安全学习要点
+1. 对外仅开放80、443端口，无SSH、数据库端口暴露
+2. 业务依赖统一单点登录sgw，认证逻辑在sgw网关
+3. 存在管理员后台登录地址 /Admin/Login.aspx
+4. JS源码直接暴露后端API接口地址
+5. 老版本ASP.NET WebForm，存在历史漏洞风险，但是需要登录权限
+
+```
+
+### 3.要收集的信息
+
+```
+# hisdata.jxnu.edu.cn 信息收集清单（基于这份报告提炼）
+> 仅学习，禁止未授权扫描/测试
+
+## 一、域名 & IP 资产
+1. 主域名：`hisdata.jxnu.edu.cn`
+2. 对应IP：`198.18.18.45`
+3. 关联子域名：`sgw.jxnu.edu.cn`（单点登录网关，爬虫自动发现）
+4. 域名证书：泛域名证书 `*.jxnu.edu.cn`，证书有效期
+
+## 二、端口与服务
+1. 开放端口：80、443
+2. Web网关：OpenResty / Apache APISIX
+
+## 三、网站技术指纹
+1. 后端：ASP.NET 4.0.30319 .NET Framework WebForm
+2. 前端：jQuery、EasyUI
+3. 安全响应头：`X-Frame-Options: SAMEORIGIN`
+4. 登录表单字段：`txtPassword`
+
+## 四、页面路径与接口（爬虫Katana产出）
+1. 站点页面
+    - `/Login.aspx` 普通用户登录页
+    - `/Admin/Login.aspx` 管理员后台登录入口
+2. 统一认证网关 `sgw.jxnu.edu.cn` API
+    - 账号密码认证接口
+    - 用户信息查询、改密、登出接口
+    - 微信扫码绑定、二维码接口
+3. 第三方登录回调：CAS、OAuth2、LDAP、Radius、微信/钉钉/飞书/支付宝回调地址
+4. 静态资源：css、js（前端JS里埋藏API地址）
+
+## 五、业务架构信息
+1. 访问流程：访问hisdata → APISIX网关 → 跳转sgw单点登录 → 认证成功进入业务系统
+2. 业务系统：硕士研究生研招信息管理系统
+3. 认证体系：**统一单点登录**，业务系统本身不负责账号校验
+
+## 六、安全相关信息收集点
+1. 端口层面：无SSH、数据库等高危端口对外暴露
+2. 技术风险点：老版本ASP.NET WebForm，存在历史漏洞（需要登录后才能利用）
+3. 重点资产：管理员后台地址、单点登录整套API
+4. 前端JS：API路径直接写在JS源码中
+
+## 七、工具对应（这套信息分别用什么工具拿到）
+- Subfinder：子域名挖掘
+- dnsx：域名解析、IP获取
+- httpx：状态码、页面标题
+- nmap：端口探测
+- whatweb：网站指纹
+- katana：爬虫，抓页面路径、JS提取API、跳转关联域名
+
+如果你需要，我可以把这份清单压缩成极简版，直接复制到Typora做笔记。
+```
+
+### 4.知道资源以后就是花资源地图
+
+```
+                         江西师范大学外部资产
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             hisdata.jxnu.edu.cn          sgw.jxnu.edu.cn
+                    │                           │
+             APISIX / OpenResty             单点登录网关
+                    │                           │
+             ┌──────┴──────┐             ┌──────┴──────┐
+             │             │             │             │
+        /Login.aspx   /Admin/Login.aspx  登录API       用户API
+             │             │             │             │
+        普通用户登录     管理员入口       │       改密/登出等
+             │             │             │
+             └──────┬──────┘             │
+                    │                     │
+                    └─────────┬───────────┘
+                              ↓
+                         身份认证系统
+                              │
+                  ┌───────────┼───────────┐
+                  ↓           ↓           ↓
+                CAS         OAuth2       LDAP
+                  │
+              第三方登录
+       微信 / 钉钉 / 飞书 / 支付宝
+                              │
+                              ↓
+                  认证成功 / 返回身份
+                              │
+                              ↓
+                    hisdata 业务系统
+                              │
+                     ASP.NET WebForms
+                              │
+              ┌───────────────┼───────────────┐
+              ↓               ↓               ↓
+           页面/功能          API            数据
+              │               │               │
+          jQuery/EasyUI    参数/请求       研招业务数据
+```
+
