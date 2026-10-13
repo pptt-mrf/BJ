@@ -1,0 +1,101 @@
+# Access（微软，搭配ASP老网站，靶场常考）
+
+> 关系型数据库，Office套件里的，**文件型数据库**，整个数据库就是一个单独文件：旧版`.mdb`，新版`.accdb`
+
+## ✅核心特点
+
+1. **没有“库”的概念**：只有表，不存在`information_schema`系统库，**不能直接查询库名、自动枚举表**，只能猜表名、字段名（Access注入最大特点）
+2. 数据库文件放在网站目录，如果权限没限制，**可以直接下载mdb数据库文件**，拿到全部账号密码（经典漏洞）
+3. 只适合小型程序，老ASP网站（2000年代网站）用，现在几乎淘汰
+4. 不支持多语句执行；没有文件读写函数（不能load_file、into outfile），无法直接写马读服务器文件
+
+## ✅Access注入考点（小迪安全）
+
+1. 判断是否Access：`and exists (select * from msysobjects)` `msysobjects`是Access内置系统表，其他数据库没有
+
+2. 常用函数：
+
+   - `mid(字符串,起始,长度)`：截取字符串（MySQL是substr）
+   - `len()`：获取字符串长度（MySQL是length）
+   - `asc()`：获取字符ASCII码
+
+3. 注入方式：
+
+   - Union联合查询注入
+   - 逐字盲注（mid+asc+len）
+   - 偏移注入：猜不出字段名的时候用，Access特有考点
+
+4. 语法差异：`top 1` 取第一条数据（MySQL用limit）
+
+   ```
+   select top 1 username from admin
+   ```
+
+5. 没有报错注入！**Access不支持报错注入**，只能联合 / 盲注。
+
+## ✅一句话记忆
+
+Access是文件数据库，ASP老站；没有库、没有information_schema，**只能猜表猜字段，无报错注入，可尝试直接下载mdb**。
+
+------
+
+# 剩下数据库简要速览（一起整理，方便对比记忆）
+
+## MySQL（你前面学的，PHP+Mysql经典组合）
+
+- 关系型，开源，最常用靶场数据库
+- 有`information_schema`系统库，可以查表、字段、库
+- ✅支持报错注入（updatexml/extractvalue/floor/exp/几何函数）、联合注入、盲注、文件读写
+- 版本重点：5.x支持floor/exp/几何报错注入；8.0很多报错方式失效
+
+## MSSQL（SQL Server，微软，搭配ASP.NET）
+
+- 微软商业关系数据库
+- 系统表：`sysdatabases`、`sysobjects`、`syscolumns`
+- 支持联合、盲注、**报错注入、堆叠查询**；存储过程`xp_cmdshell`开启后可直接执行系统命令（高危）
+- 函数：`top`、`substring()`
+
+## PostgreSQL（PG，开源，企业常用）
+
+- 关系型数据库，功能强大
+- 支持报错注入、堆叠注入、DNS带外注入；语法接近MySQL但有差异
+- 可读取本地文件，高权限可执行系统命令
+
+## SQLite（文件型数据库，单文件，很多APP、小程序、本地程序使用）
+
+- 轻量文件数据库，**无独立服务进程，一个文件就是数据库**
+- 没有账号密码；`sqlite_master`系统表存储所有表结构
+- 支持联合注入、盲注；**不支持报错注入**；不能远程堆叠执行命令
+
+## Oracle（商业大型数据库，银行、大企业）
+
+- 大型商业关系库，性能强
+- 系统表：`all_tables`、`user_tables`；`utl_inaddr`、`utl_http`可以DNS带外注入
+- 函数：`substr()`，`rownum`分页（类似top）；支持报错、盲注、带外注入
+
+## Sybase（和MSSQL同源，比较老）
+
+- 商业关系数据库，语法和MSSQL高度相似，靶场极少见到
+- 同样有xp_cmdshell，注入思路基本同MSSQL
+
+## MongoDB（NoSQL，非关系型！不是SQL数据库）
+
+> ❗**没有SQL语句，所以不存在SQL注入，是NoSQL注入**
+
+- 存储JSON格式数据；使用查询操作符`$gt` `$ne` `$or`
+- 注入原理：注入JSON操作符绕过登录，不是单引号闭合SQL；万能密码payload不一样
+
+# 快速对比表（背诵版）
+
+| 数据库     | 类型           | 是否有报错注入 | 重点标识                                    |
+| ---------- | -------------- | -------------- | ------------------------------------------- |
+| Access     | 关系型，文件库 | ❌无            | ASP，mdb，mid()，top，猜表                  |
+| Mysql      | 关系型         | ✅支持          | PHP，information_schema，你学的全套报错函数 |
+| MSSQL      | 关系型         | ✅支持          | ASP.NET，xp_cmdshell，sysobjects            |
+| PostgreSQL | 关系型         | ✅支持          | 可DNS带外注入                               |
+| SQLite     | 关系型，文件库 | ❌无            | sqlite_master，单文件                       |
+| Oracle     | 关系型         | ✅支持          | rownum，utl_http带外                        |
+| Sybase     | 关系型         | ✅支持          | 类似MSSQL，老旧                             |
+| MongoDB    | NoSQL非关系    | —NoSQL注入     | $or $gt $ne，JSON查询                       |
+
+要不要我单独整理一份**各数据库注入判断语句**，用来在靶场快速识别是什么数据库？
