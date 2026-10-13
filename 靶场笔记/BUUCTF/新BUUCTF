@@ -1,0 +1,289 @@
+# <!--单纯**照着别人步骤点点点、不懂原理**，只能叫 “跑通环境”，不算真正的复现；-->
+
+# <!--复现的核心是**还原打穿「这个特定漏洞」**-->
+
+（简单题，没有写题步骤）
+
+# 1.**[0CTF 2016]piapiapia**
+
+## 1.知识点
+
+1.如何代码审计（看笔记代码审计那一页）
+
+2.什么是逆序列化
+
+### 2.有登录页面的网站一般漏洞有那些
+
+1.sql注入
+
+2.弱口令爆破
+
+3.源码泄露
+
+### 3.解题思路
+
+1. 先搭建环境
+2. 打开配置好的靶场
+3. ![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps1.jpg)**4.先标准化流程**
+
+（一）看页面有输入框（有输入框可能有的漏洞是）
+
+​         1.sql注入
+
+2.弱口令爆破
+
+3.源码泄露
+
+ 
+
+（二）稍后考虑是什么漏洞，在打开源码看一看（ctrl+r）
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps2.jpg) 
+
+（三）打开看看所有的跳转（没有什么可以利用的有用信息）
+
+（四）根据你的猜想试探漏洞
+
+**5.开始漏洞试探**    
+
+ 
+
+### 1. **sql注入漏洞试探**
+
+1. 先手动注入试探
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps3.jpg) 
+
+2.通过多次试探可能有sql注入漏洞，可是只返回，固定格式的报错，猜可能是sql盲注
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps4.jpg) 
+
+2. 直接kali启动sqlmap测试开始
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps5.jpg) 
+
+3. 基础检测
+
+sqlmap返回可能没有sql注入漏洞,(没有找到漏洞点)
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps6.jpg) 
+
+### 2. **弱口令爆破测试**
+
+1. 九头蛇启动
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps7.jpg) 
+
+2. 全部返回失败，可能有waf过滤，也可能是字典问题
+3. 更新命令绕过waf过滤，更新字典为SecLists（一个超大的字典）
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps8.jpg) 
+
+4. 返回
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps9.jpg) 
+
+5. 感觉不会有怎么多密码，哦原来是过滤条件有问题
+6. 修改失败返回条件，重新测试
+7. 没有成功的，考虑考虑下一个漏洞把
+
+### 3. **源码泄露**
+
+1. 先对文件目录进行扫描，（本来一开始就进行应该目录扫描的，但是由于有sql注入的返回，我更倾向于sql漏洞和弱口令爆破）
+2. gobuster启动
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps10.jpg) 
+
+3. 有返回结果
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps11.jpg) 
+
+4. 证明有隐藏页面，这是目录文件泄露漏洞
+5. 一个一个访问。有www.zip文件（终于看到光了）
+6. 是源码是源码
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps12.jpg) 
+
+7. 源码泄露了，开始代码审计
+
+### 4. **代码审计**（去看另一个笔记）
+
+看目录：理清业务流向
+
+搜高危函数：找到风险点位
+
+追输入：检查参数过滤（防注入、命令执行、文件漏洞）
+
+查权限：检查身份校验（防越权、未授权）
+
+搜配置：检查明文敏感信息泄露
+
+工具辅助：提升审计效率
+
+（去看另一个笔记）
+
+### **5.代码审计完了。**
+
+1.过滤有用信息，有一个隐藏的申请页面
+
+2.每个页面几乎都有防御，可以说无懈可击
+
+3.但是但是，在申请页面里在你申请图片是要序列化存储，（嘿嘿嘿，混蛋来了）
+
+4.有序列化存储而且没有过滤，我就可以反序列化插入。
+
+5.反序列化插入
+（1）先正常申请
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps15.jpg) 
+
+（2）BP抓包
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps16.jpg) 
+
+（3）改包我们在post表单提交s:8:"nickname";s:???:"xxxx";}s:5:"photo";s:10:"config.php";}"
+
+![img](file:///C:\Users\24199\AppData\Local\Temp\ksohtml33304\wps17.jpg) 
+
+（4）入侵成功
+
+# 2.**[34C3CTF 2017]urlstorage**（太难了）
+
+### 1.知识点
+
+1.**RPO = Relative Path Overwrite = 相对路径覆盖**
+
+简单说：**利用服务器和浏览器对 URL 解析不一样，把页面里的相对路径（如 `./js/main.js`）“骗” 去加载别的内容，甚至把当前页面自己当成 JS/CSS 来执行，从而偷数据或注入脚本。**
+
+2.
+
+# 3.**[ASIS 2019]Unicorn shop**
+
+## 1.知识点
+
+1.unicodedata.numeric()
+
+
+
+
+
+# 4.**ACTF2020 新生赛]Include**（简单题）
+
+## 1.知识点
+
+复习了一下简单的文件包含漏洞
+文件包含漏洞的典型特征
+
+| 特征                            | 题目表现                    | 是否匹配 |
+| ------------------------------- | --------------------------- | -------- |
+| 有文件相关的可控参数            | `?file=flag.php`            | ✅ 匹配   |
+| 直接访问目标文件无源码输出      | 页面只显示文字，无 PHP 源码 | ✅ 匹配   |
+| CTF 场景下，flag 通常藏在文件里 | 参数值直接就是 `flag.php`   | ✅ 匹配   |
+
+# 5**[极客大挑战 2019]EasySQL**（简单题）
+
+老题重写，点没写出来
+
+1.知识点
+
+万能钥匙
+
+还有sql语句的引号是怎么闭合的（谁能引起报错，谁就是闭合符号）
+
+1. MySQL中字符串有两种包裹符
+
+- 单引号  '内容' ：内部的双引号  "  是普通字符，无语法功能
+
+```
+WHERE file = '1” '
+```
+
+
+
+- 双引号  "内容" ：内部的单引号  '  是普通字符，无语法功能
+
+```
+WHERE file = "1' ”
+```
+
+
+
+2. 只有和外层包裹相同的引号才会截断字符串、破坏SQL语法
+
+3. 数字型注入无引号包裹（ where id=$id ）： ' 和 " 都会直接报错，和你当前场景区分开
+
+# 6.**[ACTF2020 新生赛]Exec**（简单题）
+
+1.知识点
+
+cat /flag
+
+**`cat`**：全称是 `concatenate`，是 Linux/Unix 系统里最常用的**文本文件查看命令**，作用是读取文件内容并直接输出到终端。
+
+**`/flag`**：表示文件的**绝对路径**，指的是系统根目录下的 `flag` 文件（这是 CTF 比赛里约定俗成的 flag 存放路径）。
+
+# 7.**[极客大挑战 2019]Havefun**（简单题）
+
+1.知识点
+复习了一下我之前打靶场的步骤
+
+# 8.**[极客大挑战 2019]LoveSQL**（简单题）
+
+1.知识点
+
+回忆了一下完整的sql注入流程
+
+## <!--我是学习网络安全的我就应该懂这些东西，而且应该是倒背如流，而不是什么都问ai-->
+
+流程（这里面的每个语句都要背会）
+
+1.先确定是不是sql注入
+
+2.用引号闭合法确定是单引号闭合还是双引号闭合（看第5题）
+
+3.用order by1,2.-- 确定能查询几个
+
+4.之后用union selsct 1,2,查询
+
+5.先查询数据库 1‘ union select 1,database() -- (这个是查询当前数据库)
+
+### 6.查询所有数据库名（MySQL 5.5+）
+
+1’ union select 1,group_concat(schema_name),3 from information_schema.schemata #
+
+解释语句
+
+   1.`group_concat()` 会把所有数据库名用逗号拼接成一行，方便页面一次性显示
+
+2. `information_schema` 是 MySQL 自带的元数据库，`schemata` 表专门记录所有数据库的信息
+3. schema_name是表schema的一个元素记录了所有数据库的名字
+
+### 7.查询指定库下所有表名
+
+ -1‘ union select 1,group_concat(table_name),3 from information_schema.tables where table_schema='库名'--+ 
+
+解释语句
+
+1.from information_schema.tables
+
+系统元数据表。`information_schema` 是 MySQL 自带的 “数据字典”，`tables` 表专门记录所有数据库的表信息。
+
+2.where table_schema='库名'
+
+过滤条件。`table_schema` 字段存的是数据库名，这里指定只查询你写的这个库下的表。（**专门记录了「这张表属于哪个数据库」**。）
+
+***<!--注意这个没有其他写法，因为我们就算是知道数据库名也不知道，在这个数据库中那个表用来存储这个数据库的表信息所以还是要用系统数据库查询-->***
+
+### 8..查询指定表下所有字段名 
+
+-1 union select 1,group_concat(column_name),3 from information_schema.columns where table_schema='库名' and table_name='表名'--+ 
+
+#### 2.第2种写法直接查询表的所以信息
+
+-1 union select 1,group_concat(*) ,3 from geek.l0ve1ysq1--+
+
+### 9..-- 查最终数据 
+
+-1 union select 1,字段1,字段2 from 库名.表名--+
+
+# 9**[强网杯 2019]随便注**
