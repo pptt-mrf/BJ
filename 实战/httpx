@@ -1,0 +1,98 @@
+# httpx
+
+1.定义
+
+一句话：**httpx 是批量 HTTP 探测工具，用来检测域名 / IP 有没有网页服务**（ProjectDiscovery 出品，和 subfinder、dnsx 一套全家桶）
+
+2.[用法](./../kali工具.md)
+
+```
+cut -d ',' -f1 ~/Desktop/dns_result.txt | httpx-toolkit -silent -sc -title -td -fr -o ~/Desktop/web_result.txt
+```
+
+### 3.解释结果
+
+```
+https://car.jxnu.edu.cn [403]
+https://cjxyxy.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET]
+https://bxgdjs.jxnu.edu.cn [200] [江西师范大学--深入贯彻中央八项规定精神学习教育] [Envoy,jQuery]
+https://hisdata.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET:4.0.30319]
+https://e.jxnu.edu.cn [200] [HSTS]
+.......
+https://jyxy.jxnu.edu.cn [200] [江西师范大学教育学院（教育学部）] [Envoy,jQuery,jQuery Migrate]
+https://jyyjy.jxnu.edu.cn [200] [江西师范大学教育研究院] [Envoy,SWFObject,jQuery]
+
+```
+
+格式：`https://xxx.jxnu.edu.cn [状态码] [页面标题] [技术指纹]`
+
+表格
+
+| 状态码  | 含义                                      | SRC 挖洞简单解读                                             |
+| ------- | ----------------------------------------- | ------------------------------------------------------------ |
+| **200** | 请求成功，正常返回网页内容                | ✅ 站点能直接打开，重点关注，可进一步看页面功能               |
+| **302** | 临时重定向（跳转）                        | ➡️ 访问这个地址会自动跳到另一个 URL，`Object moved` 是[ASP.NET](https://link.wtturl.cn/?target=https%3A%2F%2FASP.NET&scene=im&aid=582478&lang=zh)默认跳转提示 |
+| **403** | Forbidden，服务器收到请求，但**拒绝访问** | 🚫 能连通服务器，但不让你看页面；有可能是权限限制、IP 黑名单  |
+
+------
+
+逐条解释你的样例
+
+1. `https://car.jxnu.edu.cn [403]` 能连通网站，服务器拒绝返回页面。**服务器存活，但是无法直接浏览内容**。
+2. `https://cjxyxy.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET]` 访问就跳转；后端是微软[ASP.NET](https://link.wtturl.cn/?target=https%3A%2F%2FASP.NET&scene=im&aid=582478&lang=zh)框架，老[ASP.NET](https://link.wtturl.cn/?target=https%3A%2F%2FASP.NET&scene=im&aid=582478&lang=zh)系统经常容易存在漏洞。
+3. `https://bxgdjs.jxnu.edu.cn [200] [江西师范大学--深入贯彻中央八项规定精神学习教育] [Envoy,jQuery]` 正常可访问。Envoy 是反向代理，前端用 jQuery。
+4. `https://hisdata.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET:4.0.30319]` 跳转，.NET Framework 4.0，**版本比较老，重点留意**。
+5. `https://e.jxnu.edu.cn [200] [HSTS]` 200 可访问，页面标题只返回 HSTS（这是浏览器安全头，不是网页标题）。
+6. `https://jyxy.jxnu.edu.cn [200] [江西师范大学教育学院（教育学部）] [Envoy,jQuery,jQuery Migrate]` 教育学院官网，正常访问，jQuery Migrate 一般用来兼容老 jQuery 代码。
+7. `https://jyyjy.jxnu.edu.cn [200] [江西师范大学教育研究院] [Envoy,SWFObject,jQuery]` 教育研究院站点，SWFObject 是加载 Flash 的组件，属于比较老的资产。
+
+
+
+#### httpx 抓取的技术指纹（`-td` 参数）
+
+简单说：**技术指纹 = 网站暴露出的中间件、框架、组件、版本**，用来判断系统新旧、可能存在什么漏洞。
+
+##### 1. Web服务器（中间件）
+
+- Nginx：最常见
+- Apache
+- IIS（微软，老windows服务器，容易出漏洞）
+- Envoy：反向代理（你刚才结果里就有）
+- Caddy
+
+##### 2. 后端开发框架
+
+- Microsoft ASP.NET / ASP.NET:4.0.30319（.NET，老版本高危）
+- SpringBoot（Java）
+- Django（Python）
+- Flask（Python）
+- PHP
+
+3. ##### 前端库
+
+- jQuery、jQuery Migrate（Migrate代表兼容旧jQuery，版本偏老）
+- Vue、React
+- SWFObject：Flash相关，非常老（你结果里出现了）
+
+##### 4. 其他组件/服务
+
+- WordPress：博客系统，插件漏洞多，SRC高频漏洞点
+- phpMyAdmin：数据库管理页面，重点目标
+- Tomcat、Jetty：Java容器
+- Elasticsearch：ES数据库，容易未授权访问
+
+##### 挖洞快速判断口诀
+
+- IIS / ASP.NET 4.0、SWFObject、老旧jQuery → **老系统，优先看**
+- Nginx + 普通Vue → 新版站点，漏洞相对少
+- WordPress、phpMyAdmin、Tomcat → 经典容易出漏洞的组件
+
+##### 例子对照你刚才的结果
+
+`[Envoy,jQuery]` Envoy是反向代理，jQuery前端库。
+
+`[Microsoft ASP.NET:4.0.30319]` 后端.NET Framework 4.0，属于老旧框架，是重点观察对象。
+
+> 合规提醒：指纹只是线索，**不能直接去爆破/注入**，只能在补天公益SRC授权范围测试。
+
+要不要我整理成Markdown表格直接丢Typora？
