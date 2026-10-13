@@ -1,0 +1,427 @@
+# 实战步骤
+
+## 1.收集资源
+
+### 1.收集子域名
+
+#### 1.收集工具
+
+| 工具                       | 主要作用                                      | 你现在是否值得学 |
+| -------------------------- | --------------------------------------------- | ---------------- |
+| **Subfinder**              | 被动子域名发现，快                            | ⭐⭐⭐⭐⭐            |
+| **Amass**                  | 更完整的资产发现、DNS 枚举、网络映射          | ⭐⭐⭐⭐⭐            |
+| **crt.sh**                 | 从证书透明度日志找域名                        | ⭐⭐⭐⭐             |
+| **dnsx**                   | DNS 解析、验证域名是否存在                    | ⭐⭐⭐⭐⭐            |
+| **httpx**                  | 判断哪些域名有 Web 服务、状态码、标题、技术栈 | ⭐⭐⭐⭐⭐            |
+| **Shodan / FOFA / Censys** | 从互联网暴露的主机/服务反查资产               | ⭐⭐⭐⭐             |
+| **theHarvester**           | OSINT，邮箱、域名等信息                       | ⭐⭐⭐              |
+
+##### 1.**Subfinder**
+
+用
+
+```kali
+subfinder -d jxnu.edu.cn -all -recursive -active -oI -silent -r 1.1.1.1,8.8.8.8 -max-time 15 -o ~/Desktop/1.txt
+```
+
+查看，能找到的所有子域名：
+
+```
+
+ddh7.jxnu.edu.cn,198.18.1.250,hackertarget
+········
+jxfzyjy.jxnu.edu.cn,198.18.2.22,hackertarget
+
+```
+
+[解释命令](./Subfinder命令解释.md )
+
+### 2.过滤dns,看一看哪些资源，可用，那些不能用
+
+#### 1.过滤工具
+
+| 工具       | 核心用途                              | 能否管道 | 速度 | 特点                                                         |
+| ---------- | ------------------------------------- | -------- | ---- | ------------------------------------------------------------ |
+| dnsx       | 批量 DNS 解析，多记录查询，泛域名过滤 | ✅        | 快   | PD 生态，完美搭配 subfinder、httpx-toolkit，输出友好，**你的实验首选** |
+| massdns    | 高性能批量域名解析                    | ✅        | 极快 | 纯解析，适合超大域名量，输出原始                             |
+| shuffledns | 子域爆破 + DNS 解析一体               | ✅        | 快   | PD 工具，自带字典爆破 + 泛域名检测                           |
+| dig        | 单域名 DNS 查询，shell 循环实现批量   | ❌        | 慢   | 系统自带，无需安装                                           |
+| dnsrecon   | 域名综合 DNS 侦察（AXFR、各类记录）   | ❌        | 中等 | 全面 DNS 信息收集，不适合长列表批量解析                      |
+
+#### 2.dnsx
+
+用
+
+```
+dnsx -l ~/Desktop/1.txt -a -resp -silent -r 1.1.1.1,8.8.8.8 -o ~/Desktop/dns_result.txt
+
+```
+
+查看结果
+
+```
+
+04.example.com [A] [198.18.0.126] 
+.......
+10.example.com [A] [198.18.0.165] 
+
+```
+
+[解释](./DNSX)
+
+### 3.用工具检测哪些是可以访问的网页（这一步很重要）
+
+1.工具
+
+| 工具          | 核心定位                 | 批量管道 | 获取状态码 | 网页标题 | 技术指纹 | 速度 |
+| ------------- | ------------------------ | -------- | ---------- | -------- | -------- | ---- |
+| httpx-toolkit | 批量 HTTP 资产测绘       | ✅        | ✅          | ✅        | ✅        | 很快 |
+| httprobe      | 纯 HTTP/HTTPS 存活探测   | ✅        | ❌          | ❌        | ❌        | 快   |
+| nmap          | 端口扫描 + http 脚本探测 | ❌        | ✅          | ✅        | 部分     | 中等 |
+| WhatWeb       | Web 技术指纹识别         | ✅        | ✅          | ✅        | ✅        | 中等 |
+| curl (循环)   | http 请求（原生命令）    | ❌        | ✅          | ❌        | ❌        | 很慢 |
+| EyeWitness    | 网站截图 + 探测          | ❌        | ✅          | ✅        | ✅        | 慢   |
+
+#### 2.httpx
+
+1.用
+
+```
+subfinder -d jxnu.edu.cn -silent | dnsx -silent | httpx -silent -sc -title -o live.txt
+```
+
+检测结果
+
+```
+https://car.jxnu.edu.cn [403]
+https://cjxyxy.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET]
+https://bxgdjs.jxnu.edu.cn [200] [江西师范大学--深入贯彻中央八项规定精神学习教育] [Envoy,jQuery]
+https://hisdata.jxnu.edu.cn [302] [Object moved] [Microsoft ASP.NET:4.0.30319]
+https://e.jxnu.edu.cn [200] [HSTS]
+.......
+https://jyxy.jxnu.edu.cn [200] [江西师范大学教育学院（教育学部）] [Envoy,jQuery,jQuery Migrate]
+https://jyyjy.jxnu.edu.cn [200] [江西师范大学教育研究院] [Envoy,SWFObject,jQuery]
+
+```
+
+[解释](./httpx.md)
+
+### 4.HTTP 结果里建立「资产分类表」
+
+#### 1.人工分类，筛选，可能有系统漏洞的网址
+
+你可以先按照**业务性质 + 交互程度 + 重要程度**做一个粗分类。
+
+##### 1.先看业务性质
+
+有展示型有业务行，优先看业务行
+
+##### 2.交互程度
+
+看业务行，优先看有没有交互的
+
+##### 4.重要程度
+
+看业务，优先看重要的业务，比如，财务就比学生系统有价值
+
+##### 5.相应状态
+
+优先看非200的相应码，一般重要的网址都不能被正常的访问
+
+举例
+
+```
+域名	               目前看到的信息	            为什么归 A
+hisdata.jxnu.edu.cn	302，ASP.NET 4.0.30319	hisdata 明显偏数据/业务系统
+cjxy.jxnu.edu.cn	302，ASP.NET 4.0.30319	明显存在业务应用特征
+cjxyxy.jxnu.edu.cn	302，ASP.NET	            业务应用特征
+mail.jxnu.edu.cn	200，Tencent Waterproof Wall	邮件系统，属于典型业务入口
+webvpn.jxnu.edu.cn	488，访问出错	VPN/远程访问入口，即使当前返回异常也应记录
+cwc.jxnu.edu.cn	200，财务处	涉及业务功能，应进一步确认页面功能
+ilab.jxnu.edu.cn	200，虚拟仿真实验平台，Bootstrap/ECharts/crypto-js/jQuery	明确的应用平台，而且 Katana 已经发现大量 JS、文档等资源
+```
+
+
+
+### 5.挑出要访问的网址，搞明白它用的系统和技术
+
+#### 1.用WhatWeb，
+
+1.命令
+
+```
+whatweb -v -a 3 https://hisdata.jxnu.edu.cn
+```
+
+2.结果
+
+```
+WhatWeb report for https://hisdata.jxnu.edu.cn
+Status    : 302 Found
+Title     : Object moved
+IP        : 198.18.18.45
+Country   : RESERVED, ZZ
+.......
+
+HTTP Headers:
+        HTTP/1.1 200 OK
+        Content-Type: text/html; charset=utf-8
+        Content-Length: 8656
+        Connection: close
+        X-AspNet-Version: 4.0.30319
+        X-Powered-By: ASP.NET
+        X-Frame-Options: SAMEORIGIN
+        Date: Fri, 18 Sep 2026 02:40:03 GMT
+        Apisix-Cache-Status: MISS
+解释一下把
+```
+
+3.[解释](./whatweb.md)
+
+#### 2.用Nmap
+
+1.命令
+
+```
+sudo nmap -sV -Pn -T2 -p80,443 hisdata.jxnu.edu.cn -o ~/Desktop/nmap_hisdata.txt
+
+```
+
+2.结果
+
+```
+──(kali ㉿ kali)-[~]
+└─$ sudo nmap -sV -sC -Pn -T2 -p80,443 [hisdata.jxnu.edu.cn](https://link.wtturl.cn/?target=https%3A%2F%2Fhisdata.jxnu.edu.cn&scene=im&aid=582478&lang=zh) -o ~/Desktop/nmap_hisdata.txt
+
+......
+
+Service detection performed. Please report any incorrect results at [https://nmap.org/submit/](https://link.wtturl.cn/?target=https%3A%2F%2Fnmap.org%2Fsubmit%2F&scene=im&aid=582478&lang=zh) .
+Nmap done: 1 IP address (1 host up) scanned in 58.90 seconds
+```
+
+3.[解释](./whatweb.md)
+
+### 6.用工具爬取一个网页里的各种信息
+
+1.工具
+
+| 工具      | 开发语言 | 无头浏览器 (JS 动态页面) | 管道支持 | 核心特点                                                     |
+| --------- | -------- | ------------------------ | -------- | ------------------------------------------------------------ |
+| Katana    | Go       | ✅支持                    | ✅        | PD 生态，支持普通爬虫 + 无头渲染，适配 SPA 单页应用，完美接入 subfinder/httpx/nuclei 流水线 |
+| Hakrawler | Go       | ❌不支持                  | ✅        | 轻量快速，简单好用，适合常规静态页面                         |
+| GoSpider  | Go       | ❌不支持                  | ✅        | 老牌爬虫，读取 sitemap、robots，可拉取历史存档链接           |
+| Photon    | Python   | ❌不支持                  | ❌        | 提取邮箱、密钥等丰富情报，OSINT 方向                         |
+| gau       | Go       | ❌（非实时爬虫）          | ✅        | 查询互联网历史存档 URL，补充历史端点                         |
+
+2.Katana
+
+1.命令
+
+```
+katana -u https://hisdata.jxnu.edu.cn -d 3 -jc -o ~/Desktop/katana_hisdata.txt
+```
+
+2.结果
+
+```
+[https://sgw.jxnu.edu.cn/login/assets/DingTalk-legacy-3d40f26f.js](https://link.wtturl.cn/?target=https%3A%2F%2Fsgw.jxnu.edu.cn%2Flogin%2Fassets%2FDingTalk-legacy-3d40f26f.js&scene=im&aid=582478&lang=zh)
+......
+[https://sgw.jxnu.edu.cn/login/assets/JIS-legacy-ae6db9c1.js](https://link.wtturl.cn/?target=https%3A%2F%2Fsgw.jxnu.edu.cn%2Flogin%2Fassets%2FJIS-legacy-ae6db9c1.js&scene=im&aid=582478&lang=zh)
+[https://sgw.jxnu.edu.cn/login/assets/ShowLoginBtnAuth-legacy-e1972c4a.js](https://link.wtturl.cn/?target=https%3A%2F%2Fsgw.jxnu.edu.cn%2Flogin%2Fassets%2FShowLoginBtnAuth-legacy-e1972c4a.js&scene=im&aid=582478&lang=zh)
+[https://sgw.jxnu.edu.cn/login/assets/CasGW-legacy-73b0f137.js](https://link.wtturl.cn/?target=https%3A%2F%2Fsgw.jxnu.edu.cn%2Flogin%2Fassets%2FCasGW-legacy-73b0f137.js&scene=im&aid=582478&lang=zh)
+[INF] Crawl completed in 20s. 531 endpoints found.
+```
+
+3.[解释](./Katana.md)
+
+### [总结](./总结.md)
+
+收集了各种信息
+
+## 2.地图绘制和A,B,C,D,攻击尝试
+
+```
+                            【起点】目标资产：hisdata.jxnu.edu.cn
+                                    IP：198.18.18.45
+                                    流量入口：APISIX(OpenResty)网关
+                                              ↓
+                        ┌──────────────────────┬──────────────────────┐
+                        │                      │
+                【资产测绘阶段（已完成）】    【四大并行测试分支（待开展）】
+                        │                      │
+  ┌────────────────────────────┐        ┌─────┴─────┬────────┬────────┬────────┐
+  │ 工具采集成果                │        │分支A      │分支B    │分支C    │分支D    │
+  │ Nmap：80/443开放            │        │目录枚举   │JS前端  │技术栈漏洞│业务交互│
+  │ WhatWeb：ASP.NET4.0.30319   │        │           │静态分析│研究     │分析    │
+  │ Katana：531个爬虫端点       │        │           │        │        │        │
+  │ Gobuster：发现隐藏路径      │        │           │        │        │        │
+  │ 认证体系：两套登录入口      │        │           │        │        │        │
+  │  -普通用户：跳转sgw单点登录 │        │           │        │        │        │
+  │  -管理员：/Admin(走SSO)     │        │           │        │        │        │
+  │            /loginadmin.aspx(独立登录)│        │           │        │        │
+  │ 静态资源：/Image /js /css   │        │           │        │        │        │
+  │ 敏感目录：/upload(403)      │        │           │        │        │        │
+  └────────────────────────────┘        └─────┬─────┴────┬───┴────┬───┴────┘
+                                              │          │        │
+                    ┌─────────────────────────┘          │        │
+                    │                                    │        │
+                    ▼                                    ▼        ▼
+        ┌────────────────────────┐           ┌────────────────────┐ ┌────────────────────┐
+分支A目录枚举：                分支B JS静态分析：            分支C技术栈漏洞研究：
+│寻找爬虫没发现的隐藏路径      │             │解析Katana抓取JS文件 │ │检索组件历史漏洞      │
+│备份文件、旧页面、测试页面    │             │提取API、接口、参数  │ │ASP.NET4.0 MS10-070   │
+│/backup /config /old 等       │             │寻找硬编码敏感信息  │ │APISIX/OpenResty漏洞 │
+│状态码区分200/403/404         │             │前端权限逻辑、组件版本│ │jQuery/EasyUI漏洞     │
+└──────────────┬───────────────┘             └──────────┬───────────┘ └─────────┬────────┘
+               │                                        │                      │
+               ▼                                        ▼                      ▼
+        新增路径加入资产地图                    提取API/接口线索          筛选【候选漏洞清单】
+               │                                        │                      │
+               └────────────────────────────────────────┴──────────────────────┘
+                                              │
+                                              ▼
+                                    【候选线索汇总池】
+                                              │
+                    ┌─────────────────────────┴─────────────────────────┐
+                    │                                                   │
+                    ▼                                                   ▼
+          分支D 业务&HTTP交互分析                              候选漏洞验证
+        （登录、Cookie、请求参数）                           验证漏洞前置条件
+        分析SSO回调、登录表单、权限控制                       判断是否真实存在漏洞
+        检测越权、IDOR、业务逻辑缺陷                         排除版本匹配但环境不满足情况
+                    │                                                   │
+                    └─────────────────────────┬─────────────────────────┘
+                                              │
+                                              ▼
+                                    【最终结论：漏洞/风险清单】
+```
+
+
+
+![image-20260920212256658](C:\Users\24199\AppData\Roaming\Typora\typora-user-images\image-20260920212256658.png)
+
+
+
+# A类攻击
+
+````
+# 分支A（目录/文件方向）：除了常规gobuster目录爆破，还有这些轻量探测手段
+> 分支A核心定位：**挖掘服务器上存在、但是页面内没有超链接暴露出来的资源**。不只是扫目录，还包含各类文件、备份、遗留文件探测。
+> ⚠️仅学习原理，禁止高频批量发包对公网站点扫描。
+
+## 1. 后缀爆破（重点，你现在ASP.NET站点非常适用）
+普通目录扫描只拼路径；后缀爆破是**针对同一路径，尝试多种文件后缀**
+适合WebForm站点：`.aspx` `.ashx` `.asmx` `.config` `.bak` `.old` `.txt` `.zip` `.rar` `.sql`
+举例思路：
+- `web.config`、`web.config.bak`、`web.config.old`（.NET最重要配置文件）
+- `Login.aspx.bak`、`loginadmin.aspx.old`
+- `backup.zip`、`db.sql`、`data.txt`
+
+Gobuster可以直接加多后缀：
+```bash
+gobuster dir -u https://hisdata.jxnu.edu.cn -w /usr/share/wordlists/dirb/common.txt -x aspx,ashx,config,bak,old,zip,sql -k --delay 2s
+```
+> 原理：开发人员修改代码时，会留下备份文件。备份文件如果可访问，直接泄露源码、数据库配置。
+
+## 2. 敏感文件名单独爆破（不是目录，是独立文件）
+字典不再是`/admin` `/upload`这类目录，而是专门的**敏感文件字典**
+典型目标：
+`/web.config`、`/robots.txt`、`/crossdomain.xml`、`/sitemap.xml`
+`/trace.axd`（.NET跟踪页面！可以泄露请求、Cookie、路径，非常关键）
+`/elmah.axd`（.NET错误日志页面，泄露报错栈、参数）
+> trace.axd / elmah.axd 是ASP.NET WebForm经典信息泄露点，属于分支A，不需要登录。
+
+## 3. 查找备份目录、版本控制遗留文件
+开发上线如果操作失误，会遗留这类文件夹：
+- `.git/` ：git版本库，拿到可以下载整套源码
+- `.svn/` ：svn版本库
+- `.hg/`
+- `/.idea/`、`/vscode/` 开发IDE目录
+- `_bak/`、`backup/`、`old/`
+
+> 这个就是你之前gobuster扫到`.git/HEAD`返回连接被关闭的那一类。
+
+## 4. 备用站点/子路径、管理子路径枚举
+不是爆破网站目录，而是寻找**同域名下的其他管理模块**
+比如：
+`/manage/` `/manager/` `/adminapi/` `/sys/` `/system/` `/console/`
+
+## 5. HTTP方法探测（OPTIONS探测）
+探测服务器支持哪些HTTP方法：`GET POST PUT DELETE`
+如果开启PUT/DELETE，在某些目录下可以上传文件。
+```bash
+curl -k -X OPTIONS https://hisdata.jxnu.edu.cn/upload -I
+```
+看响应头 `Allow:`，这个属于分支A，对`/upload`这类403目录特别值得测。
+
+## 6. 站点源码/页面备份、压缩包探测
+网站整站打包备份文件，常见名字：
+`site.zip`、`www.zip`、`hisdata.rar`、`backup2026.zip`
+很多运维会把网站压缩包丢在网站根目录，忘记删除，直接下载整套源码。
+
+## 7. 目录遍历（路径穿越）探测
+> 区分：目录枚举是找真实存在的文件夹；目录遍历是**利用参数读取服务器任意文件**，属于漏洞验证。
+示例 payload：
+`https://hisdata.jxnu.edu.cn/xxx.aspx?file=../../web.config`
+这个属于：先在分支A发现存在文件读取参数，再做漏洞验证。
+
+## 8. robots.txt、sitemap.xml 被动获取路径（轻量，几乎无扫描特征）
+优先访问，不需要爆破：
+```bash
+curl -k https://hisdata.jxnu.edu.cn/robots.txt
+curl -k https://hisdata.jxnu.edu.cn/sitemap.xml
+```
+robots里面经常写管理员不希望爬虫访问的路径，刚好是我们的探测目标。
+
+# ✅ 分支A全部手段归类总结
+> 分支A：**发现服务器上未被页面引用的资源**
+1. 目录爆破（你已经做了，gobuster dir）
+2. 多后缀文件爆破（.bak/.old/.config/.ashx/.axd）
+3. 敏感独立文件探测（robots,trace.axd,elmah.axd,web.config）
+4. 版本控制遗留文件扫描（.git/.svn）
+5. 整站压缩备份包探测（zip/rar）
+6. HTTP OPTIONS方法探测
+7. 目录遍历Payload测试（需要参数，属于漏洞验证）
+
+# 📌 和你的目标站点关联重点（hisdata.jxnu.edu.cn）
+最高优先级、轻量的探测目标（分支A）：
+1. `/trace.axd`  .NET跟踪页面（信息泄露）
+2. `/elmah.axd` 错误日志页面
+3. `/web.config` 配置文件
+4. `/robots.txt`
+5. `/crossdomain.xml`
+
+> 一句话区分：
+> - 目录扫描：找**文件夹**
+> - 分支A其他手段：找**散落的敏感文件、备份、版本遗留、特殊axd页面**
+
+# 下一步建议
+优先执行单次请求探测这几个axd文件，发包量很小，不容易触发APISIX网关拦截：
+```bash
+curl -k -I https://hisdata.jxnu.edu.cn/trace.axd
+curl -k -I https://hisdata.jxnu.edu.cn/elmah.axd
+curl -k -I https://hisdata.jxnu.edu.cn/robots.txt
+```
+
+要不要直接执行这几条，看看返回结果？
+````
+
+# B类攻击
+
+```
+
+```
+
+
+
+## 漏洞分析与匹配
+
+### 1.searchsploit
+
+1.命令
+
+```
+searchsploit MS10-070
+```
+
+[解释](./searchsploit.md)
