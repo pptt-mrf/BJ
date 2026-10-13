@@ -1,0 +1,333 @@
+# whatweb
+
+1.[用法参数](./../kali工具.md)
+
+2.实操命令
+
+```
+whatweb -v -a 3 https://hisdata.jxnu.edu.cn
+
+```
+
+3.结果
+
+```
+WhatWeb report for https://hisdata.jxnu.edu.cn
+Status    : 302 Found
+Title     : Object moved
+IP        : 198.18.18.45
+Country   : RESERVED, ZZ
+
+Summary   : ASP_NET[4.0.30319], RedirectLocation[/Login.aspx], UncommonHeaders[apisix-cache-status], X-Frame-Options[SAMEORIGIN], X-Powered-By[ASP.NET]
+
+Detected Plugins:
+[ ASP_NET ]
+        ASP.NET is a free web framework that enables great Web 
+        applications. Used by millions of developers, it runs some 
+        of the biggest sites in the world. 
+
+        Version      : 4.0.30319 (from X-AspNet-Version HTTP header)
+        Google Dorks: (2)
+        Website     : https://www.asp.net/
+
+[ RedirectLocation ]
+        HTTP Server string location. used with http-status 301 and 
+        302 
+
+        String       : /Login.aspx (from location)
+
+[ UncommonHeaders ]
+        Uncommon HTTP server headers. The blacklist includes all 
+        the standard headers and many non standard but common ones. 
+        Interesting but fairly common headers should have their own 
+        plugins, eg. x-powered-by, server and x-aspnet-version. 
+        Info about headers can be found at www.http-stats.com 
+
+        String       : apisix-cache-status (from headers)
+
+[ X-Frame-Options ]
+        This plugin retrieves the X-Frame-Options value from the 
+        HTTP header. - More Info: 
+        http://msdn.microsoft.com/en-us/library/cc288472%28VS.85%29.
+        aspx
+
+        String       : SAMEORIGIN
+
+[ X-Powered-By ]
+        X-Powered-By HTTP header 
+
+        String       : ASP.NET (from x-powered-by string)
+
+HTTP Headers:
+        HTTP/1.1 302 Found
+        connection: close
+        Content-Type: text/html; charset=utf-8
+        Content-Length: 128
+        Location: /Login.aspx
+        X-AspNet-Version: 4.0.30319
+        X-Powered-By: ASP.NET
+        X-Frame-Options: SAMEORIGIN
+        Date: Fri, 18 Sep 2026 02:39:57 GMT
+        Apisix-Cache-Status: MISS
+------------------------------------------------------------------------------------------------------------
+WhatWeb report for https://hisdata.jxnu.edu.cn/Login.aspx
+Status    : 200 OK
+Title     : ,登录 - 江西师范大学硕士研究生研招信息管理系统
+IP        : 198.18.18.45
+Country   : RESERVED, ZZ
+
+Summary   : ASP_NET[4.0.30319], HTML5, JQuery, PasswordField[txtPassword], Script[text/javascript], UncommonHeaders[apisix-cache-status], X-Frame-Options[SAMEORIGIN], X-Powered-By[ASP.NET]
+
+Detected Plugins:
+[ ASP_NET ]
+        ASP.NET is a free web framework that enables great Web 
+        applications. Used by millions of developers, it runs some 
+        of the biggest sites in the world. 
+
+        Version      : 4.0.30319 (from X-AspNet-Version HTTP header)
+        Google Dorks: (2)
+        Website     : https://www.asp.net/
+
+[ HTML5 ]
+        HTML version 5, detected by the doctype declaration 
+
+
+[ JQuery ]
+        A fast, concise, JavaScript that simplifies how to traverse 
+        HTML documents, handle events, perform animations, and add 
+        AJAX. 
+
+        Website     : http://jquery.com/
+
+[ PasswordField ]
+        find password fields 
+
+        String       : txtPassword (from field name)
+
+[ Script ]
+        This plugin detects instances of script HTML elements and 
+        returns the script language/type. 
+
+        String       : text/javascript
+
+[ UncommonHeaders ]
+        Uncommon HTTP server headers. The blacklist includes all 
+        the standard headers and many non standard but common ones. 
+        Interesting but fairly common headers should have their own 
+        plugins, eg. x-powered-by, server and x-aspnet-version. 
+        Info about headers can be found at www.http-stats.com 
+
+        String       : apisix-cache-status (from headers)
+
+[ X-Frame-Options ]
+        This plugin retrieves the X-Frame-Options value from the 
+        HTTP header. - More Info: 
+        http://msdn.microsoft.com/en-us/library/cc288472%28VS.85%29.
+        aspx
+
+        String       : SAMEORIGIN
+
+[ X-Powered-By ]
+        X-Powered-By HTTP header 
+
+        String       : ASP.NET (from x-powered-by string)
+
+HTTP Headers:
+        HTTP/1.1 200 OK
+        Content-Type: text/html; charset=utf-8
+        Content-Length: 8656
+        Connection: close
+        X-AspNet-Version: 4.0.30319
+        X-Powered-By: ASP.NET
+        X-Frame-Options: SAMEORIGIN
+        Date: Fri, 18 Sep 2026 02:40:03 GMT
+        Apisix-Cache-Status: MISS
+解释一下把
+```
+
+### 解释（很重要）
+
+1.首先我访问了两个网址用（---------）隔开
+
+2.Status：是状态码
+
+3.Title：题目
+
+#### 4.IP  ：这个是代理ip，（和Country 一起看）
+
+有怎么几个问题
+
+```
+0.怎么判断它是不是真实IP。
+1.这个IP如果不是真实IP，它是什么
+2.是什么性质的，有什么用
+3.除了，这种还有什么特殊的IP
+4.如何找到真实的ip
+5.找到真实的ip有什么用
+6.------
+```
+
+0.**********
+
+1.IP：198.18.18.45，属于一个特殊用途的地址范围，因此不能把它当作正常互联网公网地址来理解。
+
+2.
+
+```
+198.18.0.0/15
+```
+
+这个地址段是专门保留给**网络设备/网络性能测试、基准测试等用途**的特殊地址空间。
+
+3.分类
+
+| 网段              | IP 范围                       | 类型 / 用途    | 能否公网路由 | 常见场景                                                     |
+| ----------------- | ----------------------------- | -------------- | ------------ | ------------------------------------------------------------ |
+| `10.0.0.0/8`      | 10.0.0.0 ~ 10.255.255.255     | 私有内网       | ❌            | 云主机、VPN、容器内网                                        |
+| `172.16.0.0/12`   | 172.16.0.0 ~ 172.31.255.255   | 私有内网       | ❌            | 公司局域网、Docker 默认网段                                  |
+| `192.168.0.0/16`  | 192.168.0.0 ~ 192.168.255.255 | 私有内网       | ❌            | 家庭路由器、办公室                                           |
+| `127.0.0.0/8`     | 127.0.0.0 ~ 127.255.255.255   | 回环地址       | ❌            | [localhost](https://link.wtturl.cn/?target=https%3A%2F%2Flocalhost&scene=im&aid=582478&lang=zh) 本机测试 |
+| `198.18.0.0/15`   | 198.18.0.0 ~ 198.19.255.255   | 基准测试保留段 | ❌            | 设备压测（本次目标 IP 在此）                                 |
+| `169.254.0.0/16`  | 169.254.0.0 ~ 169.254.255.255 | 链路本地地址   | ❌            | DHCP 失联自动分配临时 IP                                     |
+| `192.0.2.0/24`    | 192.0.2.0 ~ 192.0.2.255       | 文档示例保留段 | ❌            | 教程、手册演示                                               |
+| `198.51.100.0/24` | 198.51.100.0 ~ 198.51.100.255 | 文档示例保留段 | ❌            | 教程、手册演示                                               |
+| `203.0.113.0/24`  | 203.0.113.0 ~ 203.0.113.255   | 文档示例保留段 | ❌            | 教程、手册演示                                               |
+| `224.0.0.0/4`     | 224.0.0.0 ~ 239.255.255.255   | 组播地址       | ❌            | 视频直播、设备发现                                           |
+| `240.0.0.0/4`     | 240.0.0.0 ~ 255.255.255.254   | 保留未分配     | ❌            | 未来使用                                                     |
+
+4.以后解释
+
+5.******
+
+#### 5.Country
+
+```
+输出格式规律：`Country : [文字描述], [两位代码]`
+```
+
+| 文字描述 | 解释                              |
+| -------- | --------------------------------- |
+| RESERVED | IANA 预留网段，无所属国家         |
+| PRIVATE  | 私有内网地址（10/172.16/192.168） |
+| LOCAL    | 本机回环地址 127.0.0.1            |
+| UNKNOWN  | IP 库没有收录该 IP，无法定位      |
+| CHINA    | 中国公网 IP                       |
+
+| 代码    | 显示示例                     | 含义说明                        | 场景                                      |
+| ------- | ---------------------------- | ------------------------------- | ----------------------------------------- |
+| CN      | Country : CN, CHINA          | 中国                            | 国内服务器公网 IP                         |
+| US      | Country : US, UNITED STATES  | 美国                            | 美国机房、海外服务器                      |
+| JP      | Country : JP, JAPAN          | 日本                            | 日本机房                                  |
+| GB      | Country : GB, UNITED KINGDOM | 英国                            | 英国机房                                  |
+| HK      | Country : HK, HONG KONG      | 中国香港                        | 中国香港机房 IP                           |
+| TW      | Country : TW, TAIWAN         | 中国台湾                        | 中国台湾机房 IP                           |
+| ZZ      | Country : RESERVED, ZZ       | IANA 保留地址段，不属于任何国家 | 基准测试网段、示例文档网段（本次目标 IP） |
+| EU      | Country : EU, EUROPE         | 欧洲区域（非国家）              | 跨国 CDN、欧洲多节点                      |
+| UNKNOWN | Country : UNKNOWN            | IP 库无收录，无法定位           | 新分配 IP、小众机房                       |
+| PRIVATE | Country : PRIVATE            | 私有内网地址                    | 10/172.16/192.168 内网网段                |
+| LOCAL   | Country : LOCAL              | 本机回环地址                    | 127.0.0.1                                 |
+
+#### 6.Summary   
+
+**Summary = 摘要汇总** 
+
+作用：把本次探测识别出来的**所有 Web 技术、HTTP 头、特殊标记**全部罗列在这里，逗号分隔，是指纹信息总览。
+
+2.参数
+
+| 类别             | 识别项示例                                                   | 含义 / 作用                   | 对应工具下一步              |
+| ---------------- | ------------------------------------------------------------ | ----------------------------- | --------------------------- |
+| ① Web 服务器     | Apache / nginx / Microsoft-IIS / LiteSpeed                   | 判断 Web Server 类型          | searchsploit 对应中间件     |
+| ② 后端技术       | PHP / [ASP.NET](https://link.wtturl.cn/?target=https%3A%2F%2FASP.NET&scene=im&aid=582478&lang=zh)[4.0.30319] / Java / Node.js | 判断后端语言框架              | searchsploit 对应框架       |
+| ③ CMS / 框架     | WordPress / Drupal / Laravel / Django / Spring               | 判断软件体系                  | 查 CMS 漏洞库 / WPScan      |
+| ④ 前端框架       | JQuery / React / Vue.js / Angular / Bootstrap                | 了解前端技术栈                | 优先级低，前端漏洞需输入点  |
+| ⑤ 重定向信息     | RedirectLocation[/Login.aspx]                                | 跳转到哪里，暴露隐藏路径      | 访问跳转页，继续信息收集    |
+| ⑥ HTTP 头指纹    | X-Powered-By[PHP] / Server[nginx] / HSTS / X-Frame-Options   | 后端技术、安全策略、网关线索  | 分析头找泄露、安全头缺失    |
+| ⑦ Cookie/Session | Cookies[PHPSESSID] / Cookies[JSESSIONID]                     | Session 机制类型              | 判断会话安全                |
+| ⑧ 网站特征       | Title[Admin Login] / PasswordField[password] / HTML5         | 页面结构、登录框、后台线索    | 找后台、表单测试            |
+| ⑨ IP / 地理      | IP[198.18.18.45] / Country[RESERVED, ZZ]                     | 连接地址 + 归属（非真实源站） | 判断代理 / NAT              |
+| ⑩ 特定版本       | WordPress[6.2] / JQuery[1.12.4] / Apache[2.4.49]             | **最敏感**：技术→版本→查 CVE  | searchsploit 查对应版本漏洞 |
+
+#### 7.Detected Plugins（WhatWeb 报告）
+
+**中文：已检测到的插件** WhatWeb 内置几百个插件，每个插件专门识别一类 Web 技术、中间件、框架、HTTP 头。 `Summary` 是精简汇总；`Detected Plugins` 就是**命中插件的详细说明**。
+
+
+
+# Nmap
+
+1.[用法参数](./../kali工具.md)
+
+2.命令
+
+```
+sudo nmap -sV -Pn -T2 -p80,443 hisdata.jxnu.edu.cn -o ~/Desktop/nmap_hisdata.txt
+
+```
+
+3.结果
+
+```
+└─$ sudo nmap -sV -sC -Pn -T2 -p80,443 [hisdata.jxnu.edu.cn](https://link.wtturl.cn/?target=https%3A%2F%2Fhisdata.jxnu.edu.cn&scene=im&aid=582478&lang=zh) -o ~/Desktop/nmap_hisdata.txt
+
+Starting Nmap 7.95 ( [https://nmap.org](https://link.wtturl.cn/?target=https%3A%2F%2Fnmap.org&scene=im&aid=582478&lang=zh) ) at 2026-09-18 10:54 CST
+Stats: 0:00:08 elapsed; 0 hosts completed (1 up), 1 undergoing Service Scan
+Service scan Timing: About 0.00% done
+Stats: 0:00:14 elapsed; 0 hosts completed (1 up), 1 undergoing Service Scan
+Service scan Timing: About 50.00% done; ETC: 10:54 (0:00:13 remaining)
+Nmap scan report for [hisdata.jxnu.edu.cn](https://link.wtturl.cn/?target=https%3A%2F%2Fhisdata.jxnu.edu.cn&scene=im&aid=582478&lang=zh) (198.18.18.45)
+Host is up (0.0024s latency).
+
+PORT    STATE SERVICE  VERSION
+80/tcp  open  http     OpenResty web app server
+443/tcp open  ssl/http OpenResty web app server
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=*.[jxnu.edu.cn/organizationName=](https://link.wtturl.cn/?target=https%3A%2F%2Fjxnu.edu.cn%2ForganizationName%3D&scene=im&aid=582478&lang=zh)\xE6\xB1\x9F\xE8\xA5\xBF\xE5\xB8\x88\xE8\x8C\x83\xE5\xA4\xA7\xE5\xAD\xA6/stateOrProvinceName=\xE6\xB1\x9F\xE8\xA5\xBF\xE7\x9C\x81/countryName=CN
+| Subject Alternative Name: DNS:*.[jxnu.edu.cn](https://link.wtturl.cn/?target=https%3A%2F%2Fjxnu.edu.cn&scene=im&aid=582478&lang=zh), [DNS:jxnu.edu.cn](https://link.wtturl.cn/?target=https%3A%2F%2FDNS%3Ajxnu.edu.cn&scene=im&aid=582478&lang=zh)
+| Not valid before: 2025-12-30T00:00:00
+|_Not valid after:  2026-12-30T23:59:59
+
+Service detection performed. Please report any incorrect results at [https://nmap.org/submit/](https://link.wtturl.cn/?target=https%3A%2F%2Fnmap.org%2Fsubmit%2F&scene=im&aid=582478&lang=zh) .
+Nmap done: 1 IP address (1 host up) scanned in 58.90 seconds
+```
+
+解释
+
+````
+# 结果解读
+```
+PORT    STATE SERVICE  VERSION
+80/tcp  open  http     OpenResty web app server
+443/tcp open  ssl/http OpenResty web app server
+```
+1. **80、443端口都开放**，前面是 **OpenResty**（就是基于Nginx开发，Apache APISIX 底层就是OpenResty，对上之前WhatWeb看到的APISIX网关信息）。所有流量先经过这个网关，才会转发到后端ASP.NET系统。
+
+2. SSL证书信息
+    - 证书泛域名：`*.jxnu.edu.cn`，适配江西师大所有子域名
+    - 有效期：2025-12-30 ~ 2026-12-30，证书有效
+    - 颁发给：江西师范大学
+
+3. `Host is up (0.0024s latency)`
+    延迟很低，网络连通正常。
+
+4. `|_ssl-date: TLS randomness does not represent time`
+    这个只是nmap的一个小告警，**不是漏洞**。意思：目标TLS握手时的随机数不能用来判断服务器系统时间，可以忽略。
+
+## 资产汇总（结合之前whatweb）
+- 网关：OpenResty（APISIX）
+- 后端：ASP.NET 4.0.30319 WebForm，研招登录系统
+- 端口：仅80/443对外暴露，没有开放其他管理端口
+- 业务：研究生研招信息管理系统，登录入口 `/Login.aspx`
+
+## 安全视角重点
+> ⚠️仅学习分析，严禁无授权渗透测试
+1. 没有直接暴露后端服务器端口，流量全部经过反向代理网关，**后端主机不直接暴露公网**。
+2. 对外只有web服务，攻击面集中在Web应用本身（ASP.NET网站），无法直接端口打进去。
+3. 老ASP.NET Webform系统，这类程序历史漏洞较多，但前面有APISIX网关+登录鉴权，必须先过登录页。
+
+## 一句话总结
+扫描结果很干净，只开80/443，前端是OpenResty网关，证书正常，没有额外开放端口。
+
+要不要把 subfinder、whatweb、nmap 的全部信息合并成一份资产清单笔记？
+````
+
